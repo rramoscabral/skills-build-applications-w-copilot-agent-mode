@@ -48,3 +48,4 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
   This should be used after the data and logic contracts are implemented to catch TypeScript-level issues without running the full test suite.
 - Frontend build command: `npm run build --prefix octofit-tracker/frontend`  
   This was verified as passing, so compile-time correctness is present even though the UI contract is not yet implemented. It confirms the codebase builds cleanly before runtime behavior is filled in.
+Step 5 checkpoint
