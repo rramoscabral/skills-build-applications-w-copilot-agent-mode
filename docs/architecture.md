@@ -28,22 +28,23 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
 
 ## Implementation decisions
 
-Record your plan here before editing code.
-
-- Presentation tier decision:
-- Logic tier decision:
-- Data tier decision:
-- Activity tracking approach:
-- Team management approach:
-- Leaderboard approach:
-- Workout suggestions approach:
+- Presentation tier decision: Keep route-level components responsible for fetching, loading, empty, and error states while leaving business logic to the API and data layers. The UI should render real data from the `/api/*` contract and expose accessible status/error messaging instead of static placeholder text.
+- Logic tier decision: Centralize behavior in the Express service layer and keep routes thin. Validation, reference checks, computed fields, aggregation, and user-specific recommendation logic belong in `octofit-tracker/backend/src/services/octofitService.ts`, while HTTP handlers in `src/routes/api.ts` only parse request data and return JSON responses.
+- Data tier decision: Use Mongoose schemas with explicit `required` constraints, default values, and object references so invalid records fail at validation time and seed data remains idempotent across repeated runs. This avoids silent invalid rows and keeps the logic tier focused on contract behavior.
+- Activity tracking approach: Require a valid `user`, `team`, `type`, and `minutes`, reject malformed or unknown IDs with deliberate 4xx responses, compute `points` from activity minutes, and store a timestamp in `occurredAt` for reporting and leaderboard calculations.
+- Team management approach: Require `name` and `mascot`, maintain `members` as a default empty array, and preserve member references when teams are created or listed so both team creation and listing work without orphaned relationships.
+- Leaderboard approach: Aggregate team totals across all activities, sort descending by total points, and assign a 1-based rank per entry. The leaderboard response should include `teamName`, `totalPoints`, and `rank` exactly as the API contract expects.
+- Workout suggestions approach: Resolve the seeded user by email, map recent activity patterns to a matching workout focus such as endurance or strength, and include a human-readable `reason` explaining the match. Unknown users should return a deliberate 4xx instead of falling through to a generic server error.
 
 ## Test plan
 
-Record the commands you run and what each failure means.
-
-- Data-tier command: `npm run test:data --prefix octofit-tracker/backend`
-- API command: `npm run test:api --prefix octofit-tracker/backend`
-- Frontend command: `npm test --prefix octofit-tracker/frontend`
-- Backend build command: `npm run build --prefix octofit-tracker/backend`
-- Frontend build command: `npm run build --prefix octofit-tracker/frontend`
+- Data-tier command: `npm run test:data --prefix octofit-tracker/backend`  
+  This currently fails because the Mongoose models do not enforce the required schema fields for `User`, `Team`, `Activity`, and `Workout`. The seed idempotency check passes, which confirms the root issue is validation rather than persistence logic.
+- API command: `npm run test:api --prefix octofit-tracker/backend`  
+  This fails because the service layer still throws `501` placeholders for activity/team creation and returns an empty leaderboard. The workout suggestion test also shows the first recommendation is chosen by a generic fallback instead of recent user activity patterns.
+- Frontend command: `npm test --prefix octofit-tracker/frontend`  
+  This fails because the presentation tier still renders static placeholder text and never implements loading/empty/error state handling. The tests expect accessible `role="status"` and `role="alert"` behavior and real data iteration for activities, teams, leaderboard, and workouts.
+- Backend build command: `npm run build --prefix octofit-tracker/backend`  
+  This should be used after the data and logic contracts are implemented to catch TypeScript-level issues without running the full test suite.
+- Frontend build command: `npm run build --prefix octofit-tracker/frontend`  
+  This was verified as passing, so compile-time correctness is present even though the UI contract is not yet implemented. It confirms the codebase builds cleanly before runtime behavior is filled in.
